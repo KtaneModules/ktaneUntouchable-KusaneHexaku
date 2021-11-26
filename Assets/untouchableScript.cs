@@ -42,6 +42,7 @@ public class untouchableScript : MonoBehaviour {
 	private bool countingDown;
 	private string onlyOrNot;
 	private int modifierProbabilities;
+	private bool autosolving;
 
 	// Use this for initialization
 	void Start () {
@@ -272,17 +273,17 @@ public class untouchableScript : MonoBehaviour {
 
 	IEnumerator Countdown()
 	{
-		float moduleTimer = TwitchPlaysActive ? 11.9f : 4.9f;
+		float moduleTimer = (TwitchPlaysActive && !autosolving) ? 11.9f : 4.9f;
 		float smooth = 10;
 		float deltaWidth = 0.15f / (moduleTimer * smooth);
 		float deltaX = deltaWidth/2;
 		float currentWidth = 0.15f;
 		float currentX = 0f;
 		float end = moduleTimer * smooth;
-		if (!TwitchPlaysActive)
-			Audio.PlaySoundAtTransform ("timer", Module.transform);
-		else
+		if (TwitchPlaysActive && !autosolving)
 			Audio.PlaySoundAtTransform ("timerTP", Module.transform);
+		else
+			Audio.PlaySoundAtTransform ("timer", Module.transform);
 		for (int i = 1; i <= end; i++)
 		{
 				TimerBar.gameObject.transform.localScale = new Vector3 (currentWidth, 0.005f, 0.01f);
@@ -410,6 +411,7 @@ public class untouchableScript : MonoBehaviour {
 
 	IEnumerator TwitchHandleForcedSolve()
     {
+		autosolving = true;
 		KMSelectable[] paddles = { GreenPaddle, RedPaddle, BothPaddle };
 		for (int i = seatAmount; i > 1; i--)
         {
@@ -435,5 +437,6 @@ public class untouchableScript : MonoBehaviour {
 			}
 		}
 		while (ScreenText.text != "<>") yield return true;
-    }
+		autosolving = false;
+	}
 }

@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using KModkit;
 using Rnd = UnityEngine.Random;
-using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 public class untouchableScript : MonoBehaviour {
 
@@ -33,7 +32,6 @@ public class untouchableScript : MonoBehaviour {
 	private int yourSeat;
 	private int calledNumber;
 	private int calledModifier;
-	private string screenDisplay;
 	private bool playing;
 	private int raisedPaddle;
 	private int roundsPassed;
@@ -44,6 +42,7 @@ public class untouchableScript : MonoBehaviour {
 	private bool countingDown;
 	private string onlyOrNot;
 	private int modifierProbabilities;
+	private bool autosolving;
 
 	// Use this for initialization
 	void Start () {
@@ -120,7 +119,7 @@ public class untouchableScript : MonoBehaviour {
 				ScreenText.text = calledNumber.ToString ()+">";
 			} 
 			if (calledModifier == 14) {
-				Debug.LogFormat ("[Untouchable #{0}] The number called is [{1}], meaning green paddles do not get raised this time", _moduleId, calledNumber);
+				Debug.LogFormat ("[Untouchable #{0}] The number called is [{1}], meaning green paddles do not get raised this time.", _moduleId, calledNumber);
 				ScreenText.text = "["+calledNumber.ToString ()+"]";
 			}
 			if (calledModifier < 11) {
@@ -195,8 +194,7 @@ public class untouchableScript : MonoBehaviour {
 			TimerBar.gameObject.transform.localPosition = new Vector3 (0f, 0.0076939f, 0.0324f);
 			onlyOrNot = " ";
 
-			Debug.LogFormat ("[Untouchable #{0}] The pointer have moved to Seat #{1}.", _moduleId, pointerSeat);
-			Debug.Log (paddleName [correctPaddle]);
+			Debug.LogFormat ("[Untouchable #{0}] The pointer has moved to Seat #{1}.", _moduleId, pointerSeat);
 
 			if (correctPaddle == raisedPaddle)
 			{
@@ -234,15 +232,15 @@ public class untouchableScript : MonoBehaviour {
 				if (seatRemoved < yourSeat)
 				{
 					yourSeat--;
-					Debug.LogFormat ("[Untouchable #{0}] The player in Seat #{1} has been eliminated, your seat is now #{2}", _moduleId, seatRemoved, yourSeat);
+					Debug.LogFormat ("[Untouchable #{0}] The player in Seat #{1} has been eliminated, your seat is now #{2}.", _moduleId, seatRemoved, yourSeat);
 				}
 				else
 				{
-					Debug.LogFormat ("[Untouchable #{0}] The player in Seat #{1} has been eliminated, your seat is still #{2}", _moduleId, seatRemoved, yourSeat);
+					Debug.LogFormat ("[Untouchable #{0}] The player in Seat #{1} has been eliminated, your seat is still #{2}.", _moduleId, seatRemoved, yourSeat);
 				}
 
 				if (seatAmount == 1) {
-					Debug.LogFormat ("[Untouchable #{0}] You are now the only player remaining! Congratulation! Module solved.", _moduleId);
+					Debug.LogFormat ("[Untouchable #{0}] You are now the only player remaining! Congratulations! Module solved.", _moduleId);
 					Audio.PlaySoundAtTransform ("solve", Module.transform);
 					moduleSolved = true;
 					StartCoroutine(SolveAnimation());
@@ -275,13 +273,18 @@ public class untouchableScript : MonoBehaviour {
 
 	IEnumerator Countdown()
 	{
+		float moduleTimer = (TwitchPlaysActive && !autosolving) ? 11.9f : 4.9f;
 		float smooth = 10;
-		float deltaWidth = 0.15f / (4.9f * smooth);
+		float deltaWidth = 0.15f / (moduleTimer * smooth);
 		float deltaX = deltaWidth/2;
 		float currentWidth = 0.15f;
 		float currentX = 0f;
-		Audio.PlaySoundAtTransform ("timer", Module.transform);
-		for (int i = 1; i <= 4.9f * smooth; i++)
+		float end = moduleTimer * smooth;
+		if (TwitchPlaysActive && !autosolving)
+			Audio.PlaySoundAtTransform ("timerTP", Module.transform);
+		else
+			Audio.PlaySoundAtTransform ("timer", Module.transform);
+		for (int i = 1; i <= end; i++)
 		{
 				TimerBar.gameObject.transform.localScale = new Vector3 (currentWidth, 0.005f, 0.01f);
 				TimerBar.gameObject.transform.localPosition = new Vector3 (currentX, 0.0076939f, 0.0324f);
@@ -344,12 +347,96 @@ public class untouchableScript : MonoBehaviour {
 			}
 		}
 	}
-	
-	// Update is called once per frame
-	void Update () {
 
+	//twitch plays
+	#pragma warning disable 414
+	private readonly string TwitchHelpMessage = @"!{0} start [Starts a new round of the game] | !{0} raise <red/green/both/neither> [Raises the specified paddle (can be abbreviated to first letter)] | On Twitch Plays the time limit for deciding on an action increases from 5 to 12 seconds";
+	#pragma warning restore 414
+	private bool TwitchPlaysActive;
+	IEnumerator ProcessTwitchCommand(string command)
+	{
+		KMSelectable[] paddles = { GreenPaddle, RedPaddle, BothPaddle };
+		if (Regex.IsMatch(command, @"^\s*start\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (playing)
+				yield return "sendtochaterror A round of the game has already been started!";
+			else
+				paddles[Rnd.Range(0, 3)].OnInteract();
+		}
+		string[] parameters = command.Split(' ');
+		if (Regex.IsMatch(parameters[0], @"^\s*raise\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length > 2)
+				yield return "sendtochaterror Too many parameters!";
+			else if (parameters.Length == 2)
+            {
+				if (!playing)
+					yield return "sendtochaterror A round of the game must be started first!";
+				else
+				{
+					switch (parameters[1].ToLower())
+                    {
+						case "n":
+						case "neither":
+							if (currentPaddle != 0)
+								paddles[currentPaddle - 1].OnInteract();
+							break;
+						case "g":
+						case "green":
+							if (currentPaddle != 1)
+								paddles[0].OnInteract();
+							break;
+						case "r":
+						case "red":
+							if (currentPaddle != 2)
+								paddles[1].OnInteract();
+							break;
+						case "b":
+						case "both":
+							if (currentPaddle != 3)
+								paddles[2].OnInteract();
+							break;
+						default:
+							yield return "sendtochaterror!f The specified paddle to raise '" + parameters[1] + "' is invalid!";
+							break;
+					}
+				}
+			}
+			else if (parameters.Length == 1)
+				yield return "sendtochaterror Please specify a paddle to raise!";
+		}
+	}
 
-
-
+	IEnumerator TwitchHandleForcedSolve()
+    {
+		autosolving = true;
+		KMSelectable[] paddles = { GreenPaddle, RedPaddle, BothPaddle };
+		for (int i = seatAmount; i > 1; i--)
+        {
+			if (!playing)
+			{
+				paddles[Rnd.Range(0, 3)].OnInteract();
+				yield return new WaitForSeconds(.1f);
+			}
+			while (playing)
+			{
+				if (currentPaddle != correctPaddle && correctPaddle != 0)
+					paddles[correctPaddle - 1].OnInteract();
+				else if (currentPaddle != correctPaddle)
+					paddles[currentPaddle - 1].OnInteract();
+				int storedRounds = roundsPassed;
+				while (storedRounds == roundsPassed)
+				{
+					if (roundsPassed == 5)
+						yield return true;
+					else
+						yield return null;
+				}
+			}
+		}
+		while (ScreenText.text != "<>") yield return true;
+		autosolving = false;
 	}
 }

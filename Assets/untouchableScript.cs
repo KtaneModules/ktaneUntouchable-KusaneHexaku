@@ -100,7 +100,7 @@ public class untouchableScript : MonoBehaviour {
 			countingDown = true;
 			calledNumber = Rnd.Range (1, seatAmount + 3);
 
-			calledModifier = Rnd.Range (modifierProbabilities, 14);
+			calledModifier = Rnd.Range (modifierProbabilities, 15);
 
 			correctPaddle = 0;
 

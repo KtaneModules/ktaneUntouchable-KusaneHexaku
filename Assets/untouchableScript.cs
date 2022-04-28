@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using UnityEngine;
 using System.Linq;
@@ -53,7 +53,7 @@ public class untouchableScript : MonoBehaviour {
 
 		//calculate initial seats amount and the player's current seat
 
-		modifierProbabilities = Rnd.Range (1, 6);
+		modifierProbabilities = Rnd.Range (1, 12);
 
 		seatAmount = (Convert.ToInt32(BombInfo.GetSerialNumberNumbers().LastOrDefault()) % 3) + 5;
 		Debug.LogFormat ("[Untouchable #{0}] The last digit of the serial number is {1}, so there are a total of {2} initial seats.", _moduleId, Convert.ToInt32(BombInfo.GetSerialNumberNumbers().LastOrDefault()), seatAmount);
@@ -61,6 +61,23 @@ public class untouchableScript : MonoBehaviour {
 		yourSeat = 1 + (Convert.ToInt32 (BombInfo.GetSerialNumberNumbers().TakeLast(2).FirstOrDefault()) % seatAmount);
 		Debug.LogFormat ("[Untouchable #{0}] And let's see... the third character of the serial number is a {1}...", _moduleId, BombInfo.GetSerialNumberNumbers().TakeLast(2).FirstOrDefault());
 		Debug.LogFormat ("[Untouchable #{0}] ..alright! Sorry for the inconvenience, your seat is Seat #{1}. Good luck with the game!", _moduleId, yourSeat);
+
+		if (modifierProbabilities < 4) {
+			Debug.LogFormat ("[Untouchable #{0}] Oh, I almost forgot! Your Modifier Chance Level for this session is {1}, so no need to worry too much about the extra rules! :)", _moduleId, modifierProbabilities);
+		}
+		else if (modifierProbabilities < 7) {
+			Debug.LogFormat ("[Untouchable #{0}] Oh, I almost forgot! Your Modifier Chance Level for this session is {1}, so they'll show up moderately often. But I believe in you, good luck! :)", _moduleId, modifierProbabilities);
+		}
+		else if (modifierProbabilities < 11) {
+			Debug.LogFormat ("[Untouchable #{0}] Oh, I almost forgot! Your Modifier Chance Level for this session is {1}, so they'll show up a LOT. Make sure you know them all! :)", _moduleId, modifierProbabilities);
+		}
+		else {
+			Debug.LogFormat ("[Untouchable #{0}] Oh, I almost forgot! Your Modifier Chance Level for this session is 11, so LITERALLY every single call will be a modified call. Brace yourself! :)", _moduleId);
+		}
+
+
+
+		Debug.LogFormat ("[Untouchable #{0}] Oh, by the way, the diffic", _moduleId);
 
 		ScreenText.text = "";
 
@@ -126,17 +143,13 @@ public class untouchableScript : MonoBehaviour {
 				Debug.LogFormat ("[Untouchable #{0}] The number called is {1}, with no rule modifer.", _moduleId, calledNumber);
 				ScreenText.text = calledNumber.ToString ();
 			}
-
-			if (calledModifier != 14)
-			{
-				if (calledNumber >= seatAmount)
+				
+			if (calledModifier != 14 && calledNumber >= seatAmount)
 					correctPaddle = 1;
 
-				if (calledModifier == 11)
-				{
-					for (int i = 0; i < calledNumber; i++)
-					{
-						if (pointerSeat == yourSeat)
+				if (calledModifier == 11) {
+					for (int i = 0; i < calledNumber; i++) {
+						if (calledModifier != 14 && pointerSeat == yourSeat)
 							correctPaddle = 1;
 						
 						pointerSeat--;
@@ -144,12 +157,9 @@ public class untouchableScript : MonoBehaviour {
 						if (pointerSeat == 0)
 							pointerSeat = seatAmount;
 					}
-				}
-				else
-				{
-					for (int i = 0; i < calledNumber; i++)
-					{
-						if (pointerSeat == yourSeat)
+				} else {
+					for (int i = 0; i < calledNumber; i++) {
+						if (calledModifier != 14 && pointerSeat == yourSeat)
 							correctPaddle = 1;
 						
 						pointerSeat++;
@@ -158,15 +168,14 @@ public class untouchableScript : MonoBehaviour {
 							pointerSeat = 1;
 					}
 
-					if (calledModifier == 13)
-					{
+					if (calledModifier == 13) {
 						pointerSeat++;
 						if (pointerSeat > seatAmount)
 							pointerSeat = 1;
 					}
 						
 				}
-			}
+
 
 			if (pointerSeat == yourSeat)
 				correctPaddle = correctPaddle + 2;
@@ -218,7 +227,6 @@ public class untouchableScript : MonoBehaviour {
 
 			if (roundsPassed == 6)
 			{
-				Debug.LogFormat ("[Untouchable #{0}] Round complete!", _moduleId);
 
 				seatAmount--;
 				seatRemoved = Rnd.Range (1, seatAmount);
@@ -228,7 +236,7 @@ public class untouchableScript : MonoBehaviour {
 					if (seatRemoved > seatAmount)
 						seatRemoved = 1;
 				}
-
+				Debug.LogFormat ("[Untouchable #{0}] Round complete! There are now {1} players remaining.", _moduleId, seatAmount);
 				if (seatRemoved < yourSeat)
 				{
 					yourSeat--;
